@@ -1,0 +1,15 @@
+{
+  "name": "riljian-marketplace",
+  "owner": {
+    "name": "Jamie Lin",
+    "email": "riljian.tw@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "sinotrade",
+      "description": "TypeScript MCP server wrapping Sinotrade's Shioaji trading REST gateway.",
+      "source": "./plugins/sinotrade",
+      "homepage": "https://github.com/riljian/my-mcp-servers/tree/main/packages/sinotrade-mcp"
+    }
+  ]
+}

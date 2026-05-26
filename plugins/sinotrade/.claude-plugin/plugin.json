@@ -1,0 +1,7 @@
+{
+  "name": "sinotrade",
+  "description": "TypeScript MCP server wrapping Sinotrade's Shioaji trading REST gateway.",
+  "author": {
+    "name": "Jamie Lin"
+  }
+}
