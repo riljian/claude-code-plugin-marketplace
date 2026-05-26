@@ -16,9 +16,9 @@ description: >-
 
 # Query stock holdings (查詢庫存股)
 
-Report the account's current open stock positions. The job is two steps: pull
-the raw positions, then make them human-readable (resolve names, compute totals)
-and present them as a table.
+Report the account's current open stock positions. The job: pull the raw
+positions, fold cash dividends into each one's cost, resolve company names, then
+present everything as a table with totals.
 
 ## Step 1 — Pull the positions
 
@@ -37,20 +37,41 @@ about a specific account.
 
 Each returned position carries:
 
-| field         | meaning                                              |
-| ------------- | ---------------------------------------------------- |
-| `code`        | security code, e.g. `"2330"` — **no company name**   |
-| `quantity`    | shares held (because `unit: "Share"`)                |
-| `price`       | your average cost per share                          |
-| `last_price`  | latest market price per share                        |
-| `pnl`         | unrealized profit/loss for the whole position (TWD)  |
-| `direction`   | `Buy` (long) is the usual case                       |
-| `yd_quantity` | shares carried from previous days                    |
+| field         | meaning                                                                   |
+| ------------- | ------------------------------------------------------------------------- |
+| `id`          | position id — pass as `detail_id` to `portfolio_position_detail` (Step 2) |
+| `code`        | security code, e.g. `"2330"` — **no company name**                        |
+| `quantity`    | shares held (because `unit: "Share"`)                                     |
+| `price`       | your average cost per share                                               |
+| `last_price`  | latest market price per share                                             |
+| `direction`   | `Buy` (long) is the usual case                                            |
+| `yd_quantity` | shares carried from previous days                                         |
+
+The position also carries a `pnl` field, but it is **not** dividend-adjusted, so
+don't display it — this skill computes its own P/L in Step 4.
 
 If the list is empty, just tell the user the account currently has no open
 stock holdings — there's nothing to look up or tabulate.
 
-## Step 2 — Resolve the names you're not sure of
+## Step 2 — Fold dividends into each position's cost
+
+`price × quantity` from Step 1 is only the raw purchase cost; it ignores the
+cash dividends the holding has paid out, which the user wants counted in cost.
+For each position, call `portfolio_position_detail` with `detail_id` set to that
+position's `id`. It returns the per-lot detail rows behind the position — **sum
+their `ex_dividends`** to get the position's total dividend adjustment.
+
+The cost for the position is then:
+
+```
+成本 / cost = price × quantity + Σ ex_dividends
+```
+
+Sum `ex_dividends` exactly as returned, keeping its sign — don't flip it. There
+is one detail call per position and they're independent, so issue them in
+parallel in a single turn rather than serially.
+
+## Step 3 — Resolve the names you're not sure of
 
 Positions come back as bare codes. To show the user a usable table you need
 company names, but **do not guess names from codes** — a wrong mapping is worse
@@ -64,28 +85,32 @@ prefer looking it up — accuracy matters more here than saving a call. These
 lookups are independent, so fire them in parallel in a single turn rather than
 one at a time.
 
-## Step 3 — Present the table
+## Step 4 — Present the table
 
 Compute these per position:
 
 - **市值 / market value** = `last_price × quantity`
-- **成本 / cost** = `price × quantity`
-- **報酬率 / return %** = `pnl ÷ cost × 100%`
+- **成本 / cost** = `price × quantity + Σ ex_dividends` (from Step 2)
+- **損益 / P&L** = `市值 − 成本`
+- **報酬率 / return %** = `損益 ÷ 成本 × 100%`
 
 Then render a table and a totals row. Respond in the **same language the user
 asked in** (Traditional Chinese for a Chinese question, English for an English
 one). For a Chinese question, use this shape:
 
 ```
-| 代號 | 名稱   | 股數  | 均價   | 現價   | 市值      | 損益     | 報酬率  |
-| ---- | ------ | ----- | ------ | ------ | --------- | -------- | ------- |
-| 2330 | 台積電 | 2,500 | 580.00 | 612.00 | 1,530,000 | +80,000  | +5.52%  |
-| ...  |        |       |        |        |           |          |         |
-| 合計 |        |       |        |        | <總市值>  | <總損益> | <總報酬率> |
+| 代號 | 名稱   | 股數  | 均價   | 現價   | 市值      | 成本      | 損益      | 報酬率  |
+| ---- | ------ | ----- | ------ | ------ | --------- | --------- | --------- | ------- |
+| 2330 | 台積電 | 2,500 | 580.00 | 612.00 | 1,530,000 | 1,420,000 | +110,000  | +7.75%  |
+| ...  |        |       |        |        |           |           |           |         |
+| 合計 |        |       |        |        | <總市值>  | <總成本>  | <總損益>  | <總報酬率> |
 ```
 
-- Totals: **總市值** = Σ market value, **總損益** = Σ `pnl`, and overall
-  **報酬率** = Σ `pnl` ÷ Σ cost.
+(In the example, 成本 1,420,000 = 均價 580 × 2,500 股 minus the dividends summed
+in Step 2, which is why it's below 均價 × 股數.)
+
+- Totals: **總市值** = Σ market value, **總成本** = Σ cost, **總損益** = Σ P&L
+  (= 總市值 − 總成本), and overall **報酬率** = 總損益 ÷ 總成本.
 - Show gains/losses with an explicit sign (`+`/`-`) so direction is obvious at
   a glance; a brief 🔴/🟢 or +/- convention is fine.
 - Use thousands separators for share counts and TWD amounts, and round prices to
