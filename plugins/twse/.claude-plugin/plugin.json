@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "twse",
+  "description": "MCP server for the Taiwan Stock Exchange (臺灣證券交易所) OpenAPI: query listed-company profiles, daily material announcements, and per-industry EPS statistics.",
+  "author": {
+    "name": "Jamie Lin"
+  }
+}

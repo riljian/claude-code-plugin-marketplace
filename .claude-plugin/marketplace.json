@@ -10,6 +10,12 @@
       "description": "TypeScript MCP server wrapping Sinotrade's Shioaji trading REST gateway.",
       "source": "./plugins/sinotrade",
       "homepage": "https://github.com/riljian/my-mcp-servers/tree/main/packages/sinotrade-mcp"
+    },
+    {
+      "name": "twse",
+      "description": "MCP server for the Taiwan Stock Exchange (臺灣證券交易所) OpenAPI: query listed-company profiles, daily material announcements, and per-industry EPS statistics.",
+      "source": "./plugins/twse",
+      "homepage": "https://github.com/riljian/my-mcp-servers/tree/main/packages/twse-mcp"
     }
   ]
 }
