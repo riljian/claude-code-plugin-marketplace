@@ -1,6 +1,6 @@
 {
   "twse-mcp": {
     "type": "http",
-    "url": "https://twse-mcp-xoc6ssduxa-de.a.run.app/mcp"
+    "url": "https://twse-mcp.riljian.dev/mcp"
   }
 }
